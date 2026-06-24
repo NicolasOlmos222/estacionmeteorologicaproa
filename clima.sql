@@ -38,7 +38,15 @@ CREATE TABLE `clima` (
 --
 -- Índices para tablas volcadas
 --
-
+CREATE TABLE `dia` (
+  `id` INT NOT NULL AUTO_INCREMENT ,
+  `temperatura_max` DECIMAL NOT NULL ,
+  `temperatura_min` DECIMAL NOT NULL ,
+  `sensacion_min` DECIMAL NOT NULL ,
+  `sensacion_max` DECIMAL NOT NULL ,
+  `humedad_prom` FLOAT NOT NULL ,
+  `fecha` DATE NOT NULL DEFAULT CURRENT_TIMESTAMP ,
+  PRIMARY KEY (`id`)) ENGINE = InnoDB;
 --
 -- Indices de la tabla `clima`
 --
@@ -53,8 +61,10 @@ ALTER TABLE `clima` CHANGE `fecha` `fecha` TIMESTAMP NOT NULL DEFAULT CURRENT_TI
 -- AUTO_INCREMENT de la tabla `clima`
 --
 ALTER TABLE `clima`
-  MODIFY `id` int(4) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 COMMIT;
+
+ALTER TABLE `clima` CHANGE `temperatura` `temperatura` DECIMAL(4) NOT NULL, CHANGE `sensacion` `sensacion` DECIMAL(4) NOT NULL;
 
 
 
