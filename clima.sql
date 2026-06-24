@@ -48,6 +48,24 @@ CREATE TABLE `dia` (
   `fecha` DATE NOT NULL DEFAULT CURRENT_TIMESTAMP ,
   PRIMARY KEY (`id`)) ENGINE = InnoDB;
 --
+-- Tabla para registrar el cierre de cada semana
+CREATE TABLE `semana` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `fecha_inicio` DATE NOT NULL,
+  `fecha_fin` DATE NOT NULL,
+  `creado_en` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE = InnoDB;
+
+-- Tabla intermedia (Relación Muchos a Muchos o Uno a Muchos) 
+-- para saber qué días pertenecen a qué semana sin romper la normalización.
+CREATE TABLE `semana_dias` (
+  `semana_id` INT NOT NULL,
+  `dia_id` INT NOT NULL,
+  PRIMARY KEY (`semana_id`, `dia_id`),
+  FOREIGN KEY (`semana_id`) REFERENCES `semana`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`dia_id`) REFERENCES `dia`(`id`) ON DELETE CASCADE
+) ENGINE = InnoDB;
 -- Indices de la tabla `clima`
 --
 ALTER TABLE `clima`
