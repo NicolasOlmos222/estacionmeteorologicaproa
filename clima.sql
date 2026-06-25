@@ -32,7 +32,11 @@ CREATE TABLE `clima` (
   `temperatura` int(4) NOT NULL,
   `humedad` int(4) NOT NULL,
   `sensacion` int(4) NOT NULL,
+  `lluvia` BOOLEAN NOT NULL,
+  `lluvia_mm` DECIMAL NOT NULL,
+  `viento_direccion` DECIMAL NOT NULL,
   `fecha` date NOT NULL DEFAULT current_timestamp()
+  
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --

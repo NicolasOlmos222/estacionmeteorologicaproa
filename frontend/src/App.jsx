@@ -4,7 +4,6 @@ import Humedad from './components/humedad';
 import IndiceDeCalor from './components/sensacion';
 import Historial from './components/historial';
 
-
 function App() {
     const [temperatura, setTemperatura] = useState(0);
     const [humedad, setHumedad] = useState(0);
@@ -35,7 +34,7 @@ function App() {
                 <Humedad humedad={humedad}/>
                 <IndiceDeCalor indiceDeCalor={indiceDeCalor}/>
             </div>
-            <Historial />
+            <Historial/>
         </div>
     );
 }
