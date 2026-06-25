@@ -8,6 +8,9 @@ function App() {
     const [temperatura, setTemperatura] = useState(0);
     const [humedad, setHumedad] = useState(0);
     const [indiceDeCalor, setIndiceDeCalor] = useState(0);
+    const [lluviaBool, setLluviaBool] = useState(0);
+    const [lluviaMm, setLluviaMm] = useState(0);
+    const [direccionViento, setDireccionViento] = useState(0);
 
     useEffect(() => {
         const obtenerDatos = () => {
@@ -17,6 +20,9 @@ function App() {
                     setTemperatura(data.temperatura);
                     setHumedad(data.humedad);
                     setIndiceDeCalor(data.indiceDeCalor);
+                    setLluviaBool(data.lluviaBool)
+                    setLluviaMm(data.lluviaMm)
+                    setDireccionViento(data.direccionViento)
                 })
                 .catch(err => console.error("Error en Fetch:", err));
         };
