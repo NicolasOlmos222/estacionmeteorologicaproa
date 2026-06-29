@@ -3,14 +3,36 @@ import Temperatura from './components/temperatura';
 import Humedad from './components/humedad';
 import IndiceDeCalor from './components/sensacion';
 import Historial from './components/historial';
+import Lluvia from './components/lluvia';
+import Viento from './components/viento';
+import BotonTest from './components/botonTest'; 
+import Presentacion from './components/Presentacion';
+import GuiaDidactica from './components/GuiaDidactica';
+import './App.css'; 
 
 function App() {
     const [temperatura, setTemperatura] = useState(0);
     const [humedad, setHumedad] = useState(0);
     const [indiceDeCalor, setIndiceDeCalor] = useState(0);
-    const [lluviaBool, setLluviaBool] = useState(0);
-    const [lluviaMm, setLluviaMm] = useState(0);
+    const [lluviaBool, setLluviaBool] = useState(false); 
+    const [lluviaMm, setLluviaMm] = useState(0); 
     const [direccionViento, setDireccionViento] = useState(0);
+    const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'presentacion', 'guia'
+
+    const enviarComandoAlBackend = async (accion) => {
+        try {
+            const respuesta = await fetch('http://localhost:3000/api/clima/control', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ comando: accion })
+            });
+            const data = await respuesta.json();
+            if (!respuesta.ok) alert(`Error: ${data.error}`);
+            else console.log(data.mensaje);
+        } catch (error) {
+            console.error("Error al conectar con el servidor:", error);
+        }
+    };
 
     useEffect(() => {
         const obtenerDatos = () => {
@@ -20,27 +42,71 @@ function App() {
                     setTemperatura(data.temperatura);
                     setHumedad(data.humedad);
                     setIndiceDeCalor(data.indiceDeCalor);
-                    setLluviaBool(data.lluviaBool)
-                    setLluviaMm(data.lluviaMm)
-                    setDireccionViento(data.direccionViento)
+                    setLluviaBool(data.lluviaBool);
+                    setLluviaMm(data.nivelAgua || data.lluviaMm); 
+                    setDireccionViento(data.direccionViento);
                 })
                 .catch(err => console.error("Error en Fetch:", err));
         };
+        
         obtenerDatos();
-
-        const intervalo = setInterval(obtenerDatos, 3600000);
+        const intervalo = setInterval(obtenerDatos, 2000); 
         return () => clearInterval(intervalo);
     }, []);
 
-    return (
-        <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '800px', margin: '0 auto' }}>
+    const renderTabContent = () => {
+        switch (activeTab) {
+            case 'presentacion':
+                return <Presentacion />;
+            case 'guia':
+                return <GuiaDidactica />;
+            case 'dashboard':
+            default:
+                return (
+                    <>
+                        <div className="main-layout">
+                            <BotonTest alEnviarComando={enviarComandoAlBackend} />
+                            
+                            <div className="sensores-grid">
+                                <Temperatura temperatura={temperatura}/>
+                                <Humedad humedad={humedad}/>
+                                <IndiceDeCalor indiceDeCalor={indiceDeCalor}/>
+                                <Viento direccionViento={direccionViento}/>
+                                <Lluvia lluviaBool={lluviaBool} lluviaMm={lluviaMm}/>
+                            </div>
+                        </div>
+                        <Historial/>
+                    </>
+                );
+        }
+    };
 
-            <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
-                <Temperatura temperatura={temperatura}/>
-                <Humedad humedad={humedad}/>
-                <IndiceDeCalor indiceDeCalor={indiceDeCalor}/>
+    return (
+        <div className="app-container">
+            <h1 className="titulo-principal">Estación Meteorológica</h1>
+            
+            <div className="tabs-container">
+                <button 
+                    className={`tab-button ${activeTab === 'dashboard' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('dashboard')}
+                >
+                    Panel Principal
+                </button>
+                <button 
+                    className={`tab-button ${activeTab === 'presentacion' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('presentacion')}
+                >
+                    Presentación del Proyecto
+                </button>
+                <button 
+                    className={`tab-button ${activeTab === 'guia' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('guia')}
+                >
+                    Guía Didáctica
+                </button>
             </div>
-            <Historial/>
+
+            {renderTabContent()}
         </div>
     );
 }

@@ -1,184 +1,157 @@
-.counter {
-  font-size: 16px;
-  padding: 5px 10px;
-  border-radius: 5px;
-  color: var(--accent);
-  background: var(--accent-bg);
-  border: 2px solid transparent;
-  transition: border-color 0.3s;
-  margin-bottom: 24px;
-
-  &:hover {
-    border-color: var(--accent-border);
-  }
-  &:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-  }
+/* --- CONFIGURACIÓN GENERAL --- */
+:root {
+  --bg-principal: #121214;
+  --bg-tarjeta: #202024;
+  --borde: #29292e;
+  --texto-principal: #e1e1e6;
+  --texto-secundario: #7c7c8a;
+  --color-accento: #00b37e;
 }
 
-.hero {
-  position: relative;
-
-  .base,
-  .framework,
-  .vite {
-    inset-inline: 0;
-    margin: 0 auto;
-  }
-
-  .base {
-    width: 170px;
-    position: relative;
-    z-index: 0;
-  }
-
-  .framework,
-  .vite {
-    position: absolute;
-  }
-
-  .framework {
-    z-index: 1;
-    top: 34px;
-    height: 28px;
-    transform: perspective(2000px) rotateZ(300deg) rotateX(44deg) rotateY(39deg)
-      scale(1.4);
-  }
-
-  .vite {
-    z-index: 0;
-    top: 107px;
-    height: 26px;
-    width: auto;
-    transform: perspective(2000px) rotateZ(300deg) rotateX(40deg) rotateY(39deg)
-      scale(0.8);
-  }
+body {
+  background-color: var(--bg-principal);
+  color: var(--texto-principal);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+  padding: 0;
 }
 
-#center {
+/* --- CONTENEDOR PRINCIPAL --- */
+.app-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+.titulo-principal {
+  text-align: center;
+  color: var(--texto-principal);
+  font-size: 2.2rem;
+  margin-bottom: 30px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+}
+
+/* --- ESTRUCTURA DE LAYOUT --- */
+.main-layout {
   display: flex;
   flex-direction: column;
-  gap: 25px;
-  place-content: center;
-  place-items: center;
-  flex-grow: 1;
-
-  @media (max-width: 1024px) {
-    padding: 32px 20px 24px;
-    gap: 18px;
-  }
+  gap: 30px;
+  margin-bottom: 40px;
 }
 
-#next-steps {
+/* --- GRID DE SENSORES --- */
+.sensores-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+/* --- ESTILOS COMPARTIDOS PARA TARJETAS (Hijos de la Grid) --- */
+/* Aplica esto dentro de tus componentes (Temperatura, Humedad, etc.) si quieres homogeneidad */
+.sensor-card {
+  background-color: var(--bg-tarjeta);
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  transition: transform 0.2s, border-color 0.2s;
+}
+
+.sensor-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--color-accento);
+}
+
+/* --- CONTENEDOR DEL PANEL DE CONTROL --- */
+.panel-control {
   display: flex;
-  border-top: 1px solid var(--border);
-  text-align: left;
-
-  & > div {
-    flex: 1 1 0;
-    padding: 32px;
-    @media (max-width: 1024px) {
-      padding: 24px 20px;
-    }
-  }
-
-  .icon {
-    margin-bottom: 16px;
-    width: 22px;
-    height: 22px;
-  }
-
-  @media (max-width: 1024px) {
-    flex-direction: column;
-    text-align: center;
-  }
-}
-
-#docs {
-  border-right: 1px solid var(--border);
-
-  @media (max-width: 1024px) {
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-  }
-}
-
-#next-steps ul {
-  list-style: none;
-  padding: 0;
-  display: flex;
-  gap: 8px;
-  margin: 32px 0 0;
-
-  .logo {
-    height: 18px;
-  }
-
-  a {
-    color: var(--text-h);
-    font-size: 16px;
-    border-radius: 6px;
-    background: var(--social-bg);
-    display: flex;
-    padding: 6px 12px;
-    align-items: center;
-    gap: 8px;
-    text-decoration: none;
-    transition: box-shadow 0.3s;
-
-    &:hover {
-      box-shadow: var(--shadow);
-    }
-    .button-icon {
-      height: 18px;
-      width: 18px;
-    }
-  }
-
-  @media (max-width: 1024px) {
-    margin-top: 20px;
-    flex-wrap: wrap;
-    justify-content: center;
-
-    li {
-      flex: 1 1 calc(50% - 8px);
-    }
-
-    a {
-      width: 100%;
-      justify-content: center;
-      box-sizing: border-box;
-    }
-  }
-}
-
-#spacer {
-  height: 88px;
-  border-top: 1px solid var(--border);
-  @media (max-width: 1024px) {
-    height: 48px;
-  }
-}
-
-.ticks {
-  position: relative;
+  gap: 20px;
+  flex-wrap: wrap; /* Se adapta a pantallas de celulares */
   width: 100%;
+}
 
-  &::before,
-  &::after {
-    content: '';
-    position: absolute;
-    top: -4.5px;
-    border: 5px solid transparent;
-  }
+/* --- GRUPOS DE CONTROL (TARJETAS) --- */
+.control-group {
+  flex: 1;
+  min-width: 280px;
+  background-color: var(--bg-tarjeta);
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  padding: 20px;
+  box-sizing: border-box;
+}
 
-  &::before {
-    left: 0;
-    border-left-color: var(--border);
-  }
-  &::after {
-    right: 0;
-    border-right-color: var(--border);
-  }
+.control-group h2 {
+  font-size: 1.2rem;
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: var(--texto-principal);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* --- CONTENEDOR DE BOTONES --- */
+.botones-flex {
+  display: flex;
+  gap: 12px;
+}
+
+/* --- ESTILO BASE DE LOS BOTONES --- */
+.btn-control {
+  flex: 1;
+  padding: 12px 16px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  color: #ffffff;
+  text-align: center;
+}
+
+.btn-control:active {
+  transform: scale(0.98);
+}
+
+/* --- VARIANTES DE COLOR PARA CADA ACCIÓN --- */
+
+/* Relé Encendido (Verde brillante) */
+.btn-on {
+  background-color: #00b37e;
+}
+.btn-on:hover {
+  background-color: #00875f;
+  box-shadow: 0 0 12px rgba(0, 179, 126, 0.3);
+}
+
+/* Relé Apagado / Modo Real (Gris oscuro/neutro) */
+.btn-off {
+  background-color: #29292e;
+  border: 1px solid #323238;
+}
+.btn-off:hover {
+  background-color: #323238;
+  color: #ffffff;
+}
+
+/* Activar Test (Azul/Cian tecnológico) */
+.btn-test-on {
+  background-color: #00b37e; /* O puedes usar #0073e6 si prefieres azul */
+}
+.btn-test-on:hover {
+  background-color: #00875f;
+  box-shadow: 0 0 12px rgba(0, 179, 126, 0.3);
+}
+
+/* Desactivar Test (Rojo / Alerta suave) */
+.btn-test-off {
+  background-color: #f75a68;
+}
+.btn-test-off:hover {
+  background-color: #c74754;
+  box-shadow: 0 0 12px rgba(247, 90, 104, 0.3);
 }

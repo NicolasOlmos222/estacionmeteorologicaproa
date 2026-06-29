@@ -16,7 +16,7 @@
 #define LEDAVISO_PIN 9
 #define TX_PIN 2
 #define ANEMOMETRO_PIN 3  
-#define PIN_BOTON 5  
+#define PIN_BOTON 5
 #define SERVO_PIN 11
 
 #define DHTTYPE DHT11
@@ -81,24 +81,20 @@ void setup() {
  
 void loop() {
   // --- LECTURA DEL BOTÓN CON DEBOUNCE (ENTRAR/SALIR DEL MODO TEST) ---
-  bool lecturaBoton = digitalRead(PIN_BOTON);
+  bool lecturaBoton = !digitalRead(PIN_BOTON);
+  Serial.println(lecturaBoton);
   
-  if (lecturaBoton != ultimoEstadoBoton) {
-    ultimoTiempoRebote = millis();
-  }
-
-  if ((millis() - ultimoTiempoRebote) > retrasoRebote) {
-    // Si el estado ha cambiado y ahora es HIGH, invertimos el modo test
-    if (lecturaBoton == HIGH && ultimoEstadoBoton == LOW) {
+    if (lecturaBoton == HIGH) {
       testON = !testON; 
       if(testON) {
         Serial.println(">>> MODO TEST ACTIVADO <<<");
       } else {
         Serial.println(">>> MODO REAL ACTIVADO <<<");
       }
+      delay(500);
     }
-  }
-  ultimoEstadoBoton = lecturaBoton;
+  
+
 
   // --- CÁLCULO DE VELOCIDAD DEL VIENTO ---
   unsigned long tiempoActual = millis();
