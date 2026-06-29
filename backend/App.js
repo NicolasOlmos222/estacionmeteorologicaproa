@@ -26,14 +26,18 @@ let ultimosDatosClima = {
 };
 
 function parsearDatosArduino(dataString) {
-    const regex = /H([\d.]+)-T([\d.]+)-I([\d.]+)/;
+    const regex = /H([\d.]+)-T([\d.]+)-I([\d.]+)-L([\d.]+)-A([\d.]+)-D([\d.]+)/;
     const coincidencia = dataString.match(regex);
 
     if (coincidencia) {
         return {
             humedad: parseFloat(coincidencia[1]),
             temperatura: parseFloat(coincidencia[2]),
-            indiceDeCalor: parseFloat(coincidencia[3])
+            indiceDeCalor: parseFloat(coincidencia[3]),
+            lluviaBool: (coincidencia[4]),
+            lluviaMm: parseFloat(coincidencia[5]),
+            direccionViento: parseFloat(coincidencia[6])
+
         };
     } else {
         throw new Error(`Formato no válido: "${dataString}"`);
@@ -45,7 +49,7 @@ app.get('/api/clima', (req, res) => {
 });
 
 app.post('/api/clima', async (req, res) => {
-    const { temperatura, humedad, indiceDeCalor } = req.body;
+    const { temperatura, humedad, indiceDeCalor, lluviaBool, lluviaMm, direccionViento } = req.body;
     
     const connection = await pool.getConnection();
     
@@ -53,8 +57,8 @@ app.post('/api/clima', async (req, res) => {
         await connection.beginTransaction();
 
         const [climaActual] = await connection.query(
-            'INSERT INTO clima (temperatura, humedad, sensacion) VALUES (?, ?, ?)',
-            [temperatura, humedad, indiceDeCalor]
+            'INSERT INTO clima (temperatura, humedad, sensacion, lluvia, lluvia_mm, viento) VALUES (?, ?, ?, ?, ?, ?)',
+            [temperatura, humedad, indiceDeCalor, lluviaBool, lluviaMm, direccionViento]
         );
         
         await connection.commit();
@@ -81,7 +85,7 @@ app.post('/api/clima', async (req, res) => {
 app.get('/api/clima/historial', async (req, res) => {
     try {
         const [rows] = await pool.query(`
-            SELECT id, temperatura, humedad, sensacion, fecha 
+            SELECT id, temperatura, humedad, sensacion, lluvia, lluvia_mm, viento, fecha 
             FROM clima 
             ORDER BY fecha DESC;
         `);
@@ -91,6 +95,9 @@ app.get('/api/clima/historial', async (req, res) => {
             temperatura: row.temperatura,
             humedad: row.humedad,
             indiceDeCalor: row.sensacion,
+            lluviaBool: row.lluvia,
+            lluviaMm: row.lluvia_mm,
+            direccionViento: row.viento,
             fecha: row.fecha
         }));
 
@@ -105,7 +112,7 @@ app.post('/api/clima/procesar-dia', async (req, res) => {
     try {
         await connection.beginTransaction();
         const [lecturas] = await connection.query(`
-            SELECT temperatura, humedad, sensacion 
+            SELECT temperatura, humedad, sensacion, lluvia, lluvia_mm, viento 
             FROM clima 
             WHERE fecha >= NOW() - INTERVAL 1 DAY
         `);
@@ -118,6 +125,9 @@ app.post('/api/clima/procesar-dia', async (req, res) => {
         const temperaturas = lecturas.map(l => l.temperatura);
         const humedades = lecturas.map(l => l.humedad);
         const sensaciones = lecturas.map(l => l.sensacion);
+        const sensaciones = lecturas.map(l => l.lluvia);
+        const sensaciones = lecturas.map(l => l.lluvia_mm);
+        const sensaciones = lecturas.map(l => l.viento);
 
         const tempMax = Math.max(...temperaturas);
         const tempMin = Math.min(...temperaturas);
