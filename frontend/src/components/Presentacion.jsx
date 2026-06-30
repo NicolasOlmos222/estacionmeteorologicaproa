@@ -11,7 +11,7 @@ const Presentacion = () => {
   const pilares = [
     { title: "Hardware y Sensores", desc: "Placas Arduino y ESP32 que leen datos del ambiente y controlan los mecanismos de la estación." },
     { title: "Backend", desc: "Recibe, procesa y guarda toda la información de los sensores de forma segura y estructurada." },
-    { title: "Interfaz de Usuario (Frontend)", desc: "Esta página web donde puedes ver el clima en vivo, controlar mecanismos y descargar el historial (próximamente)." },
+    { title: "Interfaz de Usuario (Frontend)", desc: "Esta página web donde puedes ver el clima en vivo, controlar mecanismos y descargar el historial." },
     { title: "Energía Solar", desc: "Funciona de forma aislada e independiente gracias a su panel solar y baterías de respaldo." }
   ];
 

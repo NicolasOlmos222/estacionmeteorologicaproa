@@ -6,6 +6,16 @@ function Historial() {
     const [cargando, setCargando] = useState(false);
     const [hasMore, setHasMore] = useState(true);
     const [semanasExpandidas, setSemanasExpandidas] = useState({});
+    
+    // Estados para exportación a Excel (sin emojis)
+    const [mesExportar, setMesExportar] = useState(() => {
+        const hoy = new Date();
+        const anio = hoy.getFullYear();
+        const mes = String(hoy.getMonth() + 1).padStart(2, '0');
+        return `${anio}-${mes}`;
+    });
+    const [exportando, setExportando] = useState(false);
+    const [mensajeError, setMensajeError] = useState('');
 
     // Cargar bloques de 4 semanas
     const cargarSemanas = () => {
@@ -43,9 +53,112 @@ function Historial() {
         }));
     };
 
+    // Restablecer la vista inicial del historial (para solucionar crash del botón Cerrar)
+    const restablecerVistaInicial = () => {
+        setSemanas([]);
+        setPagina(0);
+        setHasMore(true);
+        setCargando(true);
+        fetch(`http://localhost:3000/api/clima/historial-semanas?page=0`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.length < 4) {
+                    setHasMore(false);
+                }
+                setSemanas(data);
+                setPagina(1);
+                setCargando(false);
+            })
+            .catch(err => {
+                console.error("Error al restablecer:", err);
+                setCargando(false);
+            });
+    };
+
+    // Función para descargar reporte mensual en Excel
+    const descargarExcel = async () => {
+        setExportando(true);
+        setMensajeError('');
+        try {
+            const respuesta = await fetch(`http://localhost:3000/api/clima/exportar?mes=${mesExportar}`);
+            if (!respuesta.ok) {
+                const data = await respuesta.json();
+                throw new Error(data.error || 'Error al descargar el archivo.');
+            }
+            
+            const blob = await respuesta.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `historial_clima_${mesExportar}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error("Error al exportar Excel:", error);
+            setMensajeError(error.message);
+        } finally {
+            setExportando(false);
+        }
+    };
+
     return (
         <div style={{ marginTop: '30px', fontFamily: 'sans-serif' }}>
             <h2>Historial de Clima por Semanas</h2>
+
+            <div style={{
+                backgroundColor: 'var(--bg-tarjeta)',
+                border: '1px solid var(--borde)',
+                borderRadius: '12px',
+                padding: '24px',
+                marginBottom: '20px',
+                boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+            }}>
+                <h3 style={{ margin: '0 0 10px 0', color: 'var(--texto-principal)', fontSize: '1.2rem', fontWeight: 500 }}>Descargar Reporte Mensual</h3>
+                <p style={{ margin: '0 0 15px 0', color: 'var(--texto-secundario)', fontSize: '0.95rem' }}>
+                    Seleccione un mes para exportar el historial de lecturas climáticas a un archivo Excel.
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                    <input 
+                        type="month" 
+                        value={mesExportar}
+                        onChange={(e) => setMesExportar(e.target.value)}
+                        style={{
+                            padding: '10px 14px',
+                            borderRadius: '8px',
+                            border: '1px solid var(--borde)',
+                            fontSize: '0.95rem',
+                            fontFamily: 'inherit',
+                            backgroundColor: 'var(--bg-principal)',
+                            color: 'var(--texto-principal)',
+                            outline: 'none'
+                        }}
+                    />
+                    <button 
+                        onClick={descargarExcel}
+                        disabled={exportando}
+                        style={{
+                            padding: '10px 18px',
+                            fontSize: '0.95rem',
+                            fontWeight: '600',
+                            backgroundColor: exportando ? '#29292e' : 'var(--color-accento)',
+                            color: '#ffffff',
+                            border: 'none',
+                            borderRadius: '8px',
+                            cursor: exportando ? 'not-allowed' : 'pointer',
+                            transition: 'all 0.2s ease-in-out'
+                        }}
+                    >
+                        {exportando ? 'Generando archivo...' : 'Descargar Excel'}
+                    </button>
+                </div>
+                {mensajeError && (
+                    <p style={{ margin: '12px 0 0 0', color: '#f75a68', fontSize: '0.95rem', fontWeight: '600' }}>
+                        {mensajeError}
+                    </p>
+                )}
+            </div>
 
                 {pagina > 1 && (
                     <button 

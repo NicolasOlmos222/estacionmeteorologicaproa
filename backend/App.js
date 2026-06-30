@@ -3,6 +3,7 @@ const cors = require('cors');
 const mysql = require('mysql2/promise');
 const { SerialPort } = require('serialport');
 const { ReadlineParser } = require('@serialport/parser-readline');
+const XLSX = require('xlsx');
 
 const app = express();
 app.use(express.json());
@@ -88,6 +89,90 @@ app.get('/api/clima/historial', async (req, res) => {
     } catch (err) {
         console.error("Error al consultar el historial de clima:", err);
         res.status(500).json({ error: err.message });
+    }
+});
+
+// 2b. Exportar historial de clima de un mes específico a Excel (.xlsx)
+app.get('/api/clima/exportar', async (req, res) => {
+    const { mes } = req.query; // Espera formato YYYY-MM (ej. 2026-06)
+
+    if (!mes) {
+        return res.status(400).json({ error: "Debe seleccionar un mes para descargar los datos." });
+    }
+
+    const regexMes = /^\d{4}-\d{2}$/;
+    if (!regexMes.test(mes)) {
+        return res.status(400).json({ error: "El formato de mes debe ser AAAA-MM." });
+    }
+
+    const [anio, mesNum] = mes.split('-');
+
+    try {
+        const [rows] = await pool.query(`
+            SELECT id, temperatura, humedad, sensacion, lluvia, lluvia_mm, viento, velocidad_viento, fecha 
+            FROM clima 
+            WHERE YEAR(fecha) = ? AND MONTH(fecha) = ?
+            ORDER BY fecha ASC;
+        `, [anio, mesNum]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: "No hay registros de clima para el mes seleccionado." });
+        }
+
+        // Mapear los datos a un formato legible en español sin emojis
+        const datosFormateados = rows.map(row => {
+            let fechaFormateada = '';
+            if (row.fecha) {
+                const d = new Date(row.fecha);
+                const dia = String(d.getDate()).padStart(2, '0');
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const a = d.getFullYear();
+                const horas = String(d.getHours()).padStart(2, '0');
+                const minutos = String(d.getMinutes()).padStart(2, '0');
+                fechaFormateada = `${dia}/${m}/${a} ${horas}:${minutos}`;
+            }
+
+            return {
+                "Fecha y Hora": fechaFormateada,
+                "Temperatura (C)": row.temperatura,
+                "Humedad (%)": row.humedad,
+                "Sensación Térmica (C)": row.sensacion,
+                "Lluvia (Sí/No)": row.lluvia ? "Sí" : "No",
+                "Nivel de Agua (mm)": row.lluvia_mm,
+                "Dirección del Viento (grados)": row.viento,
+                "Velocidad del Viento (unidades)": row.velocidad_viento || 0
+            };
+        });
+
+        // Crear el libro y la hoja de Excel
+        const worksheet = XLSX.utils.json_to_sheet(datosFormateados);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Historial Clima");
+
+        // Configurar el ancho de las columnas para mejorar la legibilidad
+        const colWidths = [
+            { wch: 20 }, // Fecha y Hora
+            { wch: 18 }, // Temperatura (C)
+            { wch: 15 }, // Humedad (%)
+            { wch: 22 }, // Sensacion Termica (C)
+            { wch: 15 }, // Lluvia (Si/No)
+            { wch: 20 }, // Nivel de Agua (mm)
+            { wch: 28 }, // Direccion del Viento (grados)
+            { wch: 28 }  // Velocidad del Viento (unidades)
+        ];
+        worksheet['!cols'] = colWidths;
+
+        // Escribir en un buffer
+        const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+        // Enviar el archivo para descarga
+        res.setHeader('Content-Disposition', `attachment; filename=historial_clima_${mes}.xlsx`);
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.send(buffer);
+
+    } catch (err) {
+        console.error("Error al exportar a Excel:", err);
+        res.status(500).json({ error: "Error interno al generar el archivo Excel.", detalles: err.message });
     }
 });
 
