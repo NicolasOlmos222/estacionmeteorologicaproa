@@ -1,45 +1,34 @@
 #include <DHT.h>
 #include "I2Cdev.h"
-#include "MPU6050.h"
 
 // PINES
 #define DHT_PIN 6
 #define LEDERROR_PIN 10  
 #define RELE_PIN 7
-#define LLUVIA_PIN A2
-#define NIVELAGUA_PIN A1
-#define SCL_PIN A5
-#define SDA_PIN A4
-
-#define LUZ_PIN 12 //AGREGAR
-
-#define LEDAVISO_PIN 9
-#define TX_PIN 2
-#define ANEMOMETRO_PIN 3  
+#define LLUVIA_PIN 2
+#define NIVELAGUA_PIN A0  // Usando el pin A0 para el nivel de agua
+#define LUZ_PIN 12
 #define PIN_BOTON 5
-#define SERVO_PIN 11
+#define ANEMOMETRO_PIN 9 
 
 #define DHTTYPE DHT11
 DHT dht(DHT_PIN, DHTTYPE);
-MPU6050 mpu;
 
 unsigned long tiempoAnteriorLed = 0; 
 const long intervaloLed = 1000;  
 const long intervaloLed2 = 2000;       
 int estadoLed = LOW;               
 
-// Variables para el MPU6050
-int16_t gx, gy, gz;
-int16_t ax, ay, az;
-
 // --- VARIABLES DEL BOTÓN Y MODO TEST ---
 bool ultimoEstadoBoton = LOW;
 unsigned long ultimoTiempoRebote = 0;
-const unsigned long retrasoRebote = 50; // 50ms para evitar falsos clics
-bool testON = false; // Por defecto inicia en falso, puedes cambiarlo a true desde el código si quieres
+const unsigned long retrasoRebote = 50; 
+bool testON = false; 
 
-// --- VARIABLES ANEMÓMETRO ---
-volatile unsigned long contadorVueltas = 0;
+// --- VARIABLES ANEMÓMETRO (SIN INTERRUPCIONES) ---
+unsigned long contadorVueltas = 0;
+bool estadoActualAnemometro = LOW;
+bool estadoAnteriorAnemometro = LOW;
 unsigned long tiempoAnteriorViento = 0;
 const unsigned long intervaloViento = 1000; 
 float velocidadVientoActual = 0.0;
@@ -55,61 +44,51 @@ void setup() {
     Fastwire::setup(400, true);
   #endif
   
-  mpu.initialize();
-  if(mpu.testConnection() == false){
-    Serial.println("MPU6050 connection failed");
-  }
-
-  mpu.setXGyroOffset(0);  
-  mpu.setYGyroOffset(0);  
-  mpu.setZGyroOffset(0);  
-  
   pinMode(RELE_PIN, OUTPUT);
   pinMode(LLUVIA_PIN, INPUT);
-  pinMode(LEDAVISO_PIN, OUTPUT);
   pinMode(LEDERROR_PIN, OUTPUT);
-  pinMode(TX_PIN, OUTPUT);
-  pinMode(ANEMOMETRO_PIN, INPUT); 
-  pinMode(SERVO_PIN, OUTPUT);
   pinMode(PIN_BOTON, INPUT);      
-
-  attachInterrupt(digitalPinToInterrupt(ANEMOMETRO_PIN), contarVuelta, RISING);
+  pinMode(LUZ_PIN, INPUT);
+  pinMode(ANEMOMETRO_PIN, INPUT); 
 
   controlarRele(false);
-  randomSeed(analogRead(A0));
+  // Cambiado a A3 para no interferir con la lectura analógica de A0
+  randomSeed(analogRead(A3)); 
 }
  
 void loop() {
-  // --- LECTURA DEL BOTÓN CON DEBOUNCE (ENTRAR/SALIR DEL MODO TEST) ---
-  bool lecturaBoton = !digitalRead(PIN_BOTON);
-  Serial.println(lecturaBoton);
-  
-    if (lecturaBoton == HIGH) {
-      testON = !testON; 
-      if(testON) {
-        Serial.println(">>> MODO TEST ACTIVADO <<<");
-      } else {
-        Serial.println(">>> MODO REAL ACTIVADO <<<");
-      }
-      delay(500);
-    }
-  
+  // --- 1. DETECCIÓN DE VUELTAS DEL VIENTO (POR SOFTWARE) ---
+  estadoActualAnemometro = digitalRead(ANEMOMETRO_PIN);
+  if (estadoActualAnemometro == HIGH && estadoAnteriorAnemometro == LOW) {
+    contadorVueltas++;
+  }
+  estadoAnteriorAnemometro = estadoActualAnemometro;
 
-
-  // --- CÁLCULO DE VELOCIDAD DEL VIENTO ---
+  // --- 2. CÁLCULO PERIÓDICO DE LA VELOCIDAD ---
   unsigned long tiempoActual = millis();
   if (tiempoActual - tiempoAnteriorViento >= intervaloViento) {
     tiempoAnteriorViento = tiempoActual;
     
-    noInterrupts(); 
     unsigned long vueltas = contadorVueltas;
-    contadorVueltas = 0;
-    interrupts();
+    contadorVueltas = 0; 
     
     velocidadVientoActual = vueltas * factorCalibracion;
   }
 
-  // --- CONTROL SERIAL (TAMBIÉN PUEDES ACTIVAR/DESACTIVAR TEST DESDE AQUÍ) ---
+  // --- LECTURA DEL BOTÓN CON DEBOUNCE ---
+  bool lecturaBoton = !digitalRead(PIN_BOTON);
+  
+  if (lecturaBoton == HIGH) {
+    testON = !testON; 
+    if(testON) {
+      Serial.println(">>> MODO TEST ACTIVADO <<<");
+    } else {
+      Serial.println(">>> MODO REAL ACTIVADO <<<");
+    }
+    delay(500); 
+  }
+
+  // --- CONTROL SERIAL ---
   if (Serial.available() > 0) {
     String comando = Serial.readString();
     comando.trim();
@@ -120,11 +99,11 @@ void loop() {
     else if (comando == "R0") {
       controlarRele(false);
     }
-    else if (comando == "TEST1") {  // Comando serial para forzar Test
+    else if (comando == "TEST1") {  
       testON = true;
       Serial.println(">>> MODO TEST FORZADO POR SERIAL <<<");
     }
-    else if (comando == "TEST0") {  // Comando serial para salir de Test
+    else if (comando == "TEST0") {  
       testON = false;
       Serial.println(">>> MODO REAL FORZADO POR SERIAL <<<");
     }
@@ -133,7 +112,7 @@ void loop() {
   // --- CONTROL DE FLUJO: ¿MODO TEST O MODO REAL? ---
   if (testON == true) {
       avisoError(3);
-      TEST(); // Ejecuta una ráfaga de datos aleatorios
+      TEST(); 
   } else {
       // MODO REAL
       String lectura = "";
@@ -143,32 +122,32 @@ void loop() {
 
       lectura = modularLluviaAgua(lectura);
 
-      String valor = obtenerGiroscopio();
-      lectura = lectura + valor;
-
+      int value = digitalRead(LUZ_PIN);
+      if (value == HIGH) {
+        lectura = lectura + "-Z1";
+      } else {
+        lectura = lectura + "-Z0";
+      }
+      
       lectura = lectura + "-V" + String(velocidadVientoActual, 1);
-
+      
       Serial.println(lectura);
 
       if (valorT == "H999-T999-I999"){
         avisoError(1);
-      } else if (valor == "-D999"){
-        avisoError(2);
       } else {
         avisoError(0);
       }
   }
-
-  delay(100);
 }
 
-// --- FUNCIÓN TEST MODIFICADA (SIN BUCLE INFINITO) ---
+// --- FUNCIÓN TEST ---
 void TEST(){
   int valorAleatorio = random(0, 50);
   String prueba = "H" + String(valorAleatorio) + "-T" + String(valorAleatorio) + "-I" + String(valorAleatorio);
   valorAleatorio = random(0, 2);
   prueba = prueba + "-L" + String(valorAleatorio);
-  valorAleatorio = random(0, 30);
+  valorAleatorio = random(0, 220); // Test ahora genera volumen hasta 220cc
   prueba = prueba + "-A" + String(valorAleatorio);
   valorAleatorio = random(0, 360);
   prueba = prueba + "-D" + String(valorAleatorio);
@@ -178,32 +157,28 @@ void TEST(){
   Serial.println(prueba);
 }
 
-// --- NUEVA FUNCIÓN: LECTURA DEL MPU6050 ---
-String obtenerGiroscopio(){
-  if(mpu.testConnection() ==  false){
-    return "-D999";
-  } else {
-    mpu.getAcceleration(&ax, &ay, &az);
-
-    float angulo = atan2((float)ay, (float)ax) * 180.0 / PI;
-    if (angulo < 0) {
-      angulo += 360.0;
-    }
-
-    return "-D" + String(angulo, 1);
-  }
-}
-
+// --- MODULAR LLUVIA Y AGUA CON CONVERSIÓN A CC ---
 String modularLluviaAgua(String stringBase) {
-  int valorLluvia = analogRead(LLUVIA_PIN);
-  if (valorLluvia < 102){
-    stringBase = stringBase + "-L1";
+  int value = digitalRead(LLUVIA_PIN);  
+ 
+  if (value == LOW) {
+      stringBase = stringBase + "-L1";
   } else {
     stringBase = stringBase + "-L0";
   }
 
-  int valorAgua = analogRead(NIVELAGUA_PIN);
-  stringBase = stringBase + "-A" + String(valorAgua);  
+  // Lectura analógica del agua
+  int lecturaAnalogicaAgua = analogRead(NIVELAGUA_PIN);
+  
+  // Conversión a centímetros cúbicos (cc) aproximados.
+  // 0 en seco -> 0 cc
+  // 650 completamente sumergido -> 220 cc
+  int volumenCC = map(lecturaAnalogicaAgua, 0, 2004, 0, 220);
+  
+  // Restringir el rango para evitar valores negativos o que superen los 220cc por ruido eléctrico
+  volumenCC = constrain(volumenCC, 0, 220);
+
+  stringBase = stringBase + "-A" + String(volumenCC);  
   
   return stringBase;
 }
@@ -262,9 +237,4 @@ void controlarRele(bool encender) {
   } else {
     digitalWrite(RELE_PIN, LOW);
   }
-}
-
-// --- FUNCIÓN DE INTERRUPCIÓN ---
-void contarVuelta() {
-  contadorVueltas++;
 }
