@@ -41,7 +41,7 @@ let ultimosDatosClima = {
 app.get('/api/clima', (req, res) => {
     res.json(ultimosDatosClima);
 });
-
+//ADdaslk
 app.get('/api/clima/historial', async (req, res) => {
     try {
         const [rows] = await pool.query(`
