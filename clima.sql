@@ -41,3 +41,5 @@ CREATE TABLE `semana_dias` (
   FOREIGN KEY (`semana_id`) REFERENCES `semana`(`id`) ON DELETE CASCADE,
   FOREIGN KEY (`dia_id`) REFERENCES `dia`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB;
+
+ALTER TABLE `clima` ADD COLUMN `luz` INT DEFAULT 0 AFTER `velocidad_viento`;

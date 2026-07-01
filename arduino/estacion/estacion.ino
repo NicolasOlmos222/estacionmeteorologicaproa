@@ -81,13 +81,13 @@ void loop() {
       
       // Trama limpia sin dirección: Hxx-Txx-Ixx-Lxx-Axx-Vxx
       lectura = lectura + "-V" + String(velocidadVientoActual, 1);
-      
+      int valorLuz = analogRead(A1);
+      lectura = lectura + "-Z" + String(valorLuz);
       Serial.println(lectura);
 
       if (lectura.startsWith("H999")) avisoError(1);
       else avisoError(0);
   }
-  delay(100);
 }
 
 void TEST(){

@@ -29,7 +29,8 @@ let ultimosDatosClima = {
     indiceDeCalor: 0,
     lluviaBool: 0,
     nivelAgua: 0,
-    velocidadViento: 0 // Removido direccionViento
+    velocidadViento: 0,
+    luz: 0
 };
 
 // ==========================================
@@ -41,11 +42,10 @@ app.get('/api/clima', (req, res) => {
     res.json(ultimosDatosClima);
 });
 
-// 2. Obtener el historial completo
 app.get('/api/clima/historial', async (req, res) => {
     try {
         const [rows] = await pool.query(`
-            SELECT id, temperatura, humedad, sensacion, lluvia, lluvia_mm AS nivel_agua, velocidad_viento, fecha 
+            SELECT id, temperatura, humedad, sensacion, lluvia, lluvia_mm AS nivel_agua, velocidad_viento, luz, fecha 
             FROM clima 
             ORDER BY fecha DESC;
         `);
@@ -58,6 +58,7 @@ app.get('/api/clima/historial', async (req, res) => {
             lluviaBool: row.lluvia,
             nivelAgua: row.nivel_agua, 
             velocidadViento: row.velocidad_viento || 0,
+            luz: row.luz || 0, 
             fecha: row.fecha
         }));
 
@@ -245,8 +246,8 @@ app.post('/api/clima/procesar-dia', async (req, res) => {
 });
 
 function parsearDatosArduino(dataString) {
-    // Expresión regular corregida: Soporta de forma opcional "-D" (Dirección) antes de la velocidad "-V"
-    const regex = /H([\d.]+)-T([\d.]+)-I([\d.]+)-L([01])-A([\d.]+)(?:-Z[01])?(?:-D[\d.]+)?-V([\d.]+)/;
+    // Expresión regular actualizada: Captura el valor numérico después de la "-Z" de forma obligatoria o condicional
+    const regex = /H([\d.]+)-T([\d.]+)-I([\d.]+)-L([01])-A([\d.]+)(?:-D[\d.]+)?-V([\d.]+)-Z([\d.]+)/;
     const coincidencia = dataString.match(regex);
 
     if (coincidencia) {
@@ -256,7 +257,8 @@ function parsearDatosArduino(dataString) {
             indiceDeCalor: parseFloat(coincidencia[3]),
             lluviaBool: parseInt(coincidencia[4]),     
             nivelAgua: parseFloat(coincidencia[5]),     
-            velocidadViento: parseFloat(coincidencia[6]) // Captura el último grupo correspondiente a la velocidad (-V)
+            velocidadViento: parseFloat(coincidencia[6]),
+            luz: parseFloat(coincidencia[7])
         };
     } else {
         throw new Error(`Formato no válido o incompleto: "${dataString}"`);
@@ -264,16 +266,19 @@ function parsearDatosArduino(dataString) {
 }
 
 // ==========================================================
-//  GUARDADO EN BASE DE DATOS (Arreglado Query de inserción)
+//  GUARDADO EN BASE DE DATOS (Actualizado con nivel de luz)
 // ==========================================================
 async function guardarLecturaEnBD(datos) {
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
+        
+        // 🟢 Se añadió 'luz' a la consulta SQL y un '?' extra
         await connection.query(
-            'INSERT INTO clima (temperatura, humedad, sensacion, lluvia, lluvia_mm, velocidad_viento) VALUES (?, ?, ?, ?, ?, ?)',
-            [datos.temperatura, datos.humedad, datos.indiceDeCalor, datos.lluviaBool, datos.nivelAgua, datos.velocidadViento]
+            'INSERT INTO clima (temperatura, humedad, sensacion, lluvia, lluvia_mm, velocidad_viento, luz) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [datos.temperatura, datos.humedad, datos.indiceDeCalor, datos.lluviaBool, datos.nivelAgua, datos.velocidadViento, datos.luz]
         );
+        
         await connection.commit();
     } catch (error) {
         await connection.rollback();
@@ -337,11 +342,8 @@ async function start() {
                 ultimosDatosClima = datos; // Actualizamos la variable en tiempo real para el Front
                 
                 console.log('--- 🌡️ Nueva lectura procesada ---');
-                console.log(`Temp: ${datos.temperatura}°C | Hum: ${datos.humedad}% | Viento: ${datos.velocidadViento} u.`);
-                
-                // Guardar automáticamente en la Base de Datos
-                //await guardarLecturaEnBD(datos);
-                
+                console.log(`Temp: ${datos.temperatura}°C | Hum: ${datos.humedad}% | Viento: ${datos.velocidadViento} u. | Luz: ${datos.luz}`);
+
             } catch (error) {
                 console.error('⚠️ Error al procesar esta lectura serial:', error.message);
             }
