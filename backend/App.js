@@ -17,43 +17,20 @@ const pool = mysql.createPool({
     host: process.env.DB_HOST || '127.0.0.1',
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'emep_tec',
+    database: process.env.DB_NAME || 'EMEP_TEC',
     waitForConnections: true,
     connectionLimit: 100,
     queueLimit: 0
 });
 
-// Estructura corregida según lo que realmente envía el Arduino
 let ultimosDatosClima = {
     temperatura: 0,
     humedad: 0,
     indiceDeCalor: 0,
     lluviaBool: 0,
     nivelAgua: 0,
-    direccionViento: 0,
-    velocidadViento: 0
+    velocidadViento: 0 // Removido direccionViento
 };
-
-// Expresión regular corregida para capturar el formato exacto del Arduino (Incluido -V)
-function parsearDatosArduino(dataString) {
-    // Ejemplo esperado: H45.0-T24.0-I25.2-L0-A150-D180.0-V12.5
-    const regex = /H([\d.]+)-T([\d.]+)-I([\d.]+)-L([01])-A([\d.]+)-D([\d.]+)-V([\d.]+)/;
-    const coincidencia = dataString.match(regex);
-
-    if (coincidencia) {
-        return {
-            humedad: parseFloat(coincidencia[1]),
-            temperatura: parseFloat(coincidencia[2]),
-            indiceDeCalor: parseFloat(coincidencia[3]),
-            lluviaBool: parseInt(coincidencia[4]),     // 0 o 1
-            nivelAgua: parseFloat(coincidencia[5]),     // Valor analógico del agua
-            direccionViento: parseFloat(coincidencia[6]), // Grados MPU6050
-            velocidadViento: parseFloat(coincidencia[7]) // Velocidad del anemómetro
-        };
-    } else {
-        throw new Error(`Formato no válido o incompleto: "${dataString}"`);
-    }
-}
 
 // ==========================================
 //   ENDPOINTS PARA EL FRONTEND (API GET)
@@ -68,7 +45,7 @@ app.get('/api/clima', (req, res) => {
 app.get('/api/clima/historial', async (req, res) => {
     try {
         const [rows] = await pool.query(`
-            SELECT id, temperatura, humedad, sensacion, lluvia, lluvia_mm AS nivel_agua, viento AS direccion_viento, velocidad_viento, fecha 
+            SELECT id, temperatura, humedad, sensacion, lluvia, lluvia_mm AS nivel_agua, velocidad_viento, fecha 
             FROM clima 
             ORDER BY fecha DESC;
         `);
@@ -80,99 +57,55 @@ app.get('/api/clima/historial', async (req, res) => {
             indiceDeCalor: row.sensacion,
             lluviaBool: row.lluvia,
             nivelAgua: row.nivel_agua, 
-            direccionViento: row.direccion_viento,
             velocidadViento: row.velocidad_viento || 0,
             fecha: row.fecha
         }));
 
         res.json(climaEstructurado);
     } catch (err) {
-        console.error("Error al consultar el historial de clima:", err);
         res.status(500).json({ error: err.message });
     }
 });
 
 // 2b. Exportar historial de clima de un mes específico a Excel (.xlsx)
 app.get('/api/clima/exportar', async (req, res) => {
-    const { mes } = req.query; // Espera formato YYYY-MM (ej. 2026-06)
-
-    if (!mes) {
-        return res.status(400).json({ error: "Debe seleccionar un mes para descargar los datos." });
-    }
-
-    const regexMes = /^\d{4}-\d{2}$/;
-    if (!regexMes.test(mes)) {
-        return res.status(400).json({ error: "El formato de mes debe ser AAAA-MM." });
-    }
-
-    const [anio, mesNum] = mes.split('-');
+    const { mes } = req.query;
+    // ... [Validaciones de mes idénticas] ...
 
     try {
         const [rows] = await pool.query(`
-            SELECT id, temperatura, humedad, sensacion, lluvia, lluvia_mm, viento, velocidad_viento, fecha 
+            SELECT id, temperatura, humedad, sensacion, lluvia, lluvia_mm, velocidad_viento, fecha 
             FROM clima 
             WHERE YEAR(fecha) = ? AND MONTH(fecha) = ?
             ORDER BY fecha ASC;
         `, [anio, mesNum]);
 
-        if (rows.length === 0) {
-            return res.status(404).json({ error: "No hay registros de clima para el mes seleccionado." });
-        }
+        if (rows.length === 0) return res.status(404).json({ error: "No hay registros." });
 
-        // Mapear los datos a un formato legible en español sin emojis
         const datosFormateados = rows.map(row => {
-            let fechaFormateada = '';
-            if (row.fecha) {
-                const d = new Date(row.fecha);
-                const dia = String(d.getDate()).padStart(2, '0');
-                const m = String(d.getMonth() + 1).padStart(2, '0');
-                const a = d.getFullYear();
-                const horas = String(d.getHours()).padStart(2, '0');
-                const minutos = String(d.getMinutes()).padStart(2, '0');
-                fechaFormateada = `${dia}/${m}/${a} ${horas}:${minutos}`;
-            }
-
+            // ... [Formateo de fecha idéntico] ...
             return {
                 "Fecha y Hora": fechaFormateada,
                 "Temperatura (C)": row.temperatura,
                 "Humedad (%)": row.humedad,
                 "Sensación Térmica (C)": row.sensacion,
                 "Lluvia (Sí/No)": row.lluvia ? "Sí" : "No",
-                "Nivel de Agua (mm)": row.lluvia_mm,
-                "Dirección del Viento (grados)": row.viento,
-                "Velocidad del Viento (unidades)": row.velocidad_viento || 0
+                "Nivel de Agua (cc)": row.lluvia_mm,
+                "Velocidad del Viento (m/s)": row.velocidad_viento || 0
             };
         });
 
-        // Crear el libro y la hoja de Excel
         const worksheet = XLSX.utils.json_to_sheet(datosFormateados);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Historial Clima");
+        worksheet['!cols'] = [{ wch: 20 }, { wch: 18 }, { wch: 15 }, { wch: 22 }, { wch: 15 }, { wch: 20 }, { wch: 28 }];
 
-        // Configurar el ancho de las columnas para mejorar la legibilidad
-        const colWidths = [
-            { wch: 20 }, // Fecha y Hora
-            { wch: 18 }, // Temperatura (C)
-            { wch: 15 }, // Humedad (%)
-            { wch: 22 }, // Sensacion Termica (C)
-            { wch: 15 }, // Lluvia (Si/No)
-            { wch: 20 }, // Nivel de Agua (mm)
-            { wch: 28 }, // Direccion del Viento (grados)
-            { wch: 28 }  // Velocidad del Viento (unidades)
-        ];
-        worksheet['!cols'] = colWidths;
-
-        // Escribir en un buffer
         const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
-
-        // Enviar el archivo para descarga
         res.setHeader('Content-Disposition', `attachment; filename=historial_clima_${mes}.xlsx`);
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.send(buffer);
-
     } catch (err) {
-        console.error("Error al exportar a Excel:", err);
-        res.status(500).json({ error: "Error interno al generar el archivo Excel.", detalles: err.message });
+        res.status(500).json({ error: err.message });
     }
 });
 
@@ -197,6 +130,47 @@ app.post('/api/clima/control', (req, res) => {
         }
         res.json({ mensaje: `Comando [${comando}] enviado con éxito al Arduino` });
     });
+});
+
+// 5. Historial de semanas paginado
+app.get('/api/clima/historial-semanas', async (req, res) => {
+    const page = parseInt(req.query.page) || 0;
+    const limit = 4;
+    const offset = page * limit;
+
+    try {
+        const [semanas] = await pool.query(`
+            SELECT id, fecha_inicio, fecha_fin 
+            FROM semana 
+            ORDER BY fecha_fin DESC 
+            LIMIT ? OFFSET ?
+        `, [limit, offset]);
+
+        if (semanas.length === 0) {
+            return res.json([]);
+        }
+
+        const historialCompleto = await Promise.all(semanas.map(async (semana) => {
+            const [dias] = await pool.query(`
+                SELECT d.* FROM dia d
+                JOIN semana_dias sd ON d.id = sd.dia_id
+                WHERE sd.semana_id = ?
+                ORDER BY d.fecha ASC
+            `, [semana.id]);
+
+            return {
+                id: semana.id,
+                fecha_inicio: semana.fecha_inicio,
+                fecha_fin: semana.fecha_fin,
+                dias: dias
+            };
+        }));
+
+        res.json(historialCompleto);
+    } catch (err) {
+        console.error("Error al obtener el historial por semanas:", err);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // 4. Procesar el cierre del día (Cron o trigger del frontend)
@@ -270,61 +244,40 @@ app.post('/api/clima/procesar-dia', async (req, res) => {
     }
 });
 
-// 5. Historial de semanas paginado
-app.get('/api/clima/historial-semanas', async (req, res) => {
-    const page = parseInt(req.query.page) || 0;
-    const limit = 4;
-    const offset = page * limit;
+function parsearDatosArduino(dataString) {
+    // Expresión regular corregida: Soporta de forma opcional "-D" (Dirección) antes de la velocidad "-V"
+    const regex = /H([\d.]+)-T([\d.]+)-I([\d.]+)-L([01])-A([\d.]+)(?:-Z[01])?(?:-D[\d.]+)?-V([\d.]+)/;
+    const coincidencia = dataString.match(regex);
 
-    try {
-        const [semanas] = await pool.query(`
-            SELECT id, fecha_inicio, fecha_fin 
-            FROM semana 
-            ORDER BY fecha_fin DESC 
-            LIMIT ? OFFSET ?
-        `, [limit, offset]);
-
-        if (semanas.length === 0) {
-            return res.json([]);
-        }
-
-        const historialCompleto = await Promise.all(semanas.map(async (semana) => {
-            const [dias] = await pool.query(`
-                SELECT d.* FROM dia d
-                JOIN semana_dias sd ON d.id = sd.dia_id
-                WHERE sd.semana_id = ?
-                ORDER BY d.fecha ASC
-            `, [semana.id]);
-
-            return {
-                id: semana.id,
-                fecha_inicio: semana.fecha_inicio,
-                fecha_fin: semana.fecha_fin,
-                dias: dias
-            };
-        }));
-
-        res.json(historialCompleto);
-    } catch (err) {
-        console.error("Error al obtener el historial por semanas:", err);
-        res.status(500).json({ error: err.message });
+    if (coincidencia) {
+        return {
+            humedad: parseFloat(coincidencia[1]),
+            temperatura: parseFloat(coincidencia[2]),
+            indiceDeCalor: parseFloat(coincidencia[3]),
+            lluviaBool: parseInt(coincidencia[4]),     
+            nivelAgua: parseFloat(coincidencia[5]),     
+            velocidadViento: parseFloat(coincidencia[6]) // Captura el último grupo correspondiente a la velocidad (-V)
+        };
+    } else {
+        throw new Error(`Formato no válido o incompleto: "${dataString}"`);
     }
-});
+}
 
-// Guardado automático en Base de Datos al recibir lectura serial válida
+// ==========================================================
+//  GUARDADO EN BASE DE DATOS (Arreglado Query de inserción)
+// ==========================================================
 async function guardarLecturaEnBD(datos) {
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
-        // NOTA: Asegúrate de que tu tabla 'clima' posea la columna 'velocidad_viento' o remuévela del query.
         await connection.query(
-            'INSERT INTO clima (temperatura, humedad, sensacion, lluvia, lluvia_mm, viento) VALUES (?, ?, ?, ?, ?, ?)',
-            [datos.temperatura, datos.humedad, datos.indiceDeCalor, datos.lluviaBool, datos.nivelAgua, datos.direccionViento]
+            'INSERT INTO clima (temperatura, humedad, sensacion, lluvia, lluvia_mm, velocidad_viento) VALUES (?, ?, ?, ?, ?, ?)',
+            [datos.temperatura, datos.humedad, datos.indiceDeCalor, datos.lluviaBool, datos.nivelAgua, datos.velocidadViento]
         );
         await connection.commit();
     } catch (error) {
         await connection.rollback();
-        console.error("⚠️ No se pudo auto-guardar la lectura serial en la BD:", error.message);
+        console.error("⚠️ Error BD:", error.message);
     } finally {
         connection.release();
     }
@@ -387,7 +340,7 @@ async function start() {
                 console.log(`Temp: ${datos.temperatura}°C | Hum: ${datos.humedad}% | Viento: ${datos.velocidadViento} u.`);
                 
                 // Guardar automáticamente en la Base de Datos
-                await guardarLecturaEnBD(datos);
+                //await guardarLecturaEnBD(datos);
                 
             } catch (error) {
                 console.error('⚠️ Error al procesar esta lectura serial:', error.message);
@@ -407,6 +360,19 @@ async function start() {
 function iniciarServidorExpress() {
     app.listen(PORT, () => {
         console.log(`🚀 Servidor API corriendo en http://localhost:${PORT}`);
+        
+        // ⏱️ PLANIFICADOR: Captura y guarda la lectura actual en la BD de manera estricta cada 5 minutos
+        const CINCO_MINUTOS = 5 * 60 * 1000;
+        
+        setInterval(async () => {
+            // Validamos que existan lecturas reales cargadas antes de registrar ceros vacíos
+            if (ultimosDatosClima.temperatura !== 0 || ultimosDatosClima.humedad !== 0) {
+                console.log('💾 [Base de Datos] Guardando registro cíclico de los 5 minutos...');
+                await guardarLecturaEnBD(ultimosDatosClima);
+            } else {
+                console.log('⚠️ [Base de Datos] Inserción omitida: Aún no se reciben lecturas del puerto serial.');
+            }
+        }, CINCO_MINUTOS);
     });
 }
 

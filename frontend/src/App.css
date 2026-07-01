@@ -155,3 +155,12 @@ body {
   background-color: #c74754;
   box-shadow: 0 0 12px rgba(247, 90, 104, 0.3);
 }
+
+/* --- SINCRONIZACIÓN DE ESTILO SIMPLE PARA VIENTO --- */
+.viento-simple h2 {
+  font-size: 2rem; /* El mismo tamaño que Temperatura y Sensación Térmica */
+  font-weight: 600;
+  color: var(--texto-principal);
+  margin: 0;
+  line-height: 1.2;
+}
