@@ -1,7 +1,7 @@
 function Temperatura({temperatura}) {
 
     return(
-        <div>
+        <div className="sensor-card">
             <h1>Temperatura: {temperatura} °C</h1>
         </div>
     )

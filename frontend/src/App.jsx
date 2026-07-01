@@ -8,6 +8,7 @@ import Viento from './components/viento';
 import BotonTest from './components/botonTest'; 
 import Presentacion from './components/Presentacion';
 import GuiaDidactica from './components/GuiaDidactica';
+import Luz from './components/luz';
 import './App.css'; 
 
 function App() {
@@ -17,6 +18,7 @@ function App() {
     const [lluviaBool, setLluviaBool] = useState(false); 
     const [lluviaMm, setLluviaMm] = useState(0); 
     const [velocidadViento, setVelocidadViento] = useState(0);
+    const [luz, setLuz] = useState(0);
     const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'presentacion', 'guia'
 
     const enviarComandoAlBackend = async (accion) => {
@@ -45,6 +47,7 @@ function App() {
                     setLluviaBool(data.lluviaBool);
                     setLluviaMm(data.nivelAgua || data.lluviaMm); 
                     setVelocidadViento(data.velocidadViento || 0);
+                    setLuz(data.luz || 0);
                 })
                 .catch(err => console.error("Error en Fetch:", err));
         };
@@ -73,6 +76,7 @@ function App() {
                                 <IndiceDeCalor indiceDeCalor={indiceDeCalor}/>
                                 <Viento velocidadViento={velocidadViento}/>
                                 <Lluvia lluviaBool={lluviaBool} lluviaMm={lluviaMm}/>
+                                <Luz luz={luz}/>
                             </div>
                         </div>
                         <Historial/>

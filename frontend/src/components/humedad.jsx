@@ -1,7 +1,7 @@
 function Humedad({humedad}) {
 
     return(
-        <div>
+        <div className="sensor-card">
             <h1>Humedad: {humedad} %</h1>
         </div>
     )
