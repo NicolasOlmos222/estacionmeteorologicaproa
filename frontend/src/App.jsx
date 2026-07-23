@@ -1,14 +1,18 @@
-import { useState, useEffect } from 'react';
-import Temperatura from './components/temperatura';
-import Humedad from './components/humedad';
-import IndiceDeCalor from './components/sensacion';
-import Historial from './components/historial';
-import Lluvia from './components/lluvia';
-import Viento from './components/viento';
+import { useState, useEffect, Component } from 'react';
+import Temperatura from './components/tiempo real/temperatura';
+import Humedad from './components/tiempo real/humedad';
+import IndiceDeCalor from './components/tiempo real/sensacion';
+import Historial from './components/graficos/historial';
+import Lluvia from './components/tiempo real/lluvia';
+import Viento from './components/tiempo real/viento';
 import BotonTest from './components/botonTest'; 
-import Presentacion from './components/Presentacion';
-import GuiaDidactica from './components/GuiaDidactica';
+import Presentacion from './components/paginas/Presentacion';
+import GuiaDidactica from './components/paginas/GuiaDidactica';
 import './App.css'; 
+import CanvasJSReact from '@canvasjs/react-charts';
+
+var CanvasJS = CanvasJSReact.CanvasJS;
+var CanvasJSChart = CanvasJSReact.CanvasJSChart;art;
 
 function App() {
     const [temperatura, setTemperatura] = useState(0);
@@ -33,7 +37,6 @@ function App() {
             console.error("Error al conectar con el servidor:", error);
         }
     };
-
     useEffect(() => {
         const obtenerDatos = () => {
             fetch('http://localhost:3000/api/clima')

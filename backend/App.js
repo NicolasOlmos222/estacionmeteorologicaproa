@@ -3,6 +3,7 @@ const cors = require('cors');
 const mysql = require('mysql2/promise');
 const { SerialPort } = require('serialport');
 const { ReadlineParser } = require('@serialport/parser-readline');
+const XLSX = require('xlsx')
 
 const app = express();
 app.use(express.json());
@@ -33,6 +34,7 @@ let ultimosDatosClima = {
     velocidadViento: 0
 };
 
+const hojaDeCalculo = XLSX.utils
 // Expresión regular corregida para capturar el formato exacto del Arduino (Incluido -V)
 function parsearDatosArduino(dataString) {
     // Ejemplo esperado: H45.0-T24.0-I25.2-L0-A150-D180.0-V12.5
