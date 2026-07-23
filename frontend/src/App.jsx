@@ -20,7 +20,8 @@ function App() {
     const [indiceDeCalor, setIndiceDeCalor] = useState(0);
     const [lluviaBool, setLluviaBool] = useState(false); 
     const [lluviaMm, setLluviaMm] = useState(0); 
-    const [direccionViento, setDireccionViento] = useState(0);
+    const [velocidadViento, setVelocidadViento] = useState(0);
+    const [luz, setLuz] = useState(0);
     const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'presentacion', 'guia'
 
     const enviarComandoAlBackend = async (accion) => {
@@ -47,7 +48,8 @@ function App() {
                     setIndiceDeCalor(data.indiceDeCalor);
                     setLluviaBool(data.lluviaBool);
                     setLluviaMm(data.nivelAgua || data.lluviaMm); 
-                    setDireccionViento(data.direccionViento);
+                    setVelocidadViento(data.velocidadViento || 0);
+                    setLuz(data.luz || 0);
                 })
                 .catch(err => console.error("Error en Fetch:", err));
         };
@@ -74,8 +76,9 @@ function App() {
                                 <Temperatura temperatura={temperatura}/>
                                 <Humedad humedad={humedad}/>
                                 <IndiceDeCalor indiceDeCalor={indiceDeCalor}/>
-                                <Viento direccionViento={direccionViento}/>
+                                <Viento velocidadViento={velocidadViento}/>
                                 <Lluvia lluviaBool={lluviaBool} lluviaMm={lluviaMm}/>
+                                <Luz luz={luz}/>
                             </div>
                         </div>
                         <Historial/>

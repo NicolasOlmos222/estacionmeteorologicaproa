@@ -5,7 +5,7 @@ const GuiaDidactica = () => {
   const [activeSubject, setActiveSubject] = useState(null);
 
   const subjects = [
-    { id: 1, title: "Matemáticas y Estadística", desc: "Descarga el histórico en Excel (próximamente) para calcular promedios, medianas y hacer gráficos reales con el clima de la escuela." },
+    { id: 1, title: "Matemáticas y Estadística", desc: "Descarga el histórico en Excel para calcular promedios, medianas y hacer gráficos reales con el clima de la escuela." },
     { id: 2, title: "Programación", desc: "Conéctate a nuestra API (JSON) para aprender a consumir datos en tiempo real y desarrollar tus propias apps." },
     { id: 3, title: "Ciencias Naturales", desc: "Estudia el ciclo del agua, las variaciones del clima y su impacto local con datos de nuestro propio patio." },
     { id: 4, title: "Electrónica y Energía", desc: "Analiza cómo funcionan los sensores y nuestro sistema de alimentación independiente con energía solar." }
@@ -51,7 +51,7 @@ const GuiaDidactica = () => {
         <ul>
           <li><strong>Panel Principal:</strong> Mira los datos en vivo.</li>
           <li><strong>Control:</strong> Enciende o apaga mecanismos a distancia.</li>
-          <li><strong>Historial:</strong> Revisa y exporta (descarga próximamente) todos los registros pasados para trabajar sin internet.</li>
+          <li><strong>Historial:</strong> Revisa y exporta todos los registros pasados para trabajar sin internet.</li>
         </ul>
         <p className="highlight-box">
           ¡Anímate a explorar y proponer nuevas ideas usando los datos de nuestra estación!
